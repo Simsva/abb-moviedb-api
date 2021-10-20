@@ -1,0 +1,233 @@
+<?php // -*- mode: php; -*-
+// vim: ft=php sw=2 ts=2 et
+
+// CORS
+header("Access-Control-Allow-Origin: simsva.se");
+header("Access-Control-Allow-Headers: Authorization, Origin, Content-Type, X-Auth-Token");
+header("Access-Control-Allow-Methods: GET, POST, PATCH, PUT");
+header("Access-Control-Allow-Credentials: true");
+
+// Get HTTP Basic credentials
+if (isset($_SERVER["HTTP_AUTHORIZATION"])) {
+  list($_SERVER['PHP_AUTH_USER'], $_SERVER['PHP_AUTH_PW']) = explode(':' , base64_decode(substr($_SERVER['HTTP_AUTHORIZATION'], 6)));
+}
+// Save PATCH request data
+parse_str(file_get_contents('php://input'), $_PATCH);
+
+// Get input variables
+$api_vars = preg_split("/\//", ltrim($_SERVER["PATH_INFO"], '/'));
+parse_str($_SERVER["QUERY_STRING"], $query_vars);
+
+// Filter out empty variables
+$api_vars = array_filter($api_vars, static function($var){return $var !== NULL && $var !== "";} );
+
+// Connect to Postgres
+$config = include("./config/moviedb.php");
+$pg_auth = "host=" . $config["host"] . " dbname=" . $config["dbname"] . " user=" . $config["user"] . " password=" . $config["password"];
+$dbconn = pg_connect($pg_auth)
+  or die("Could not connect to Postgres: " . pg_last_error());
+
+// Get only specified fields/columns from Postgres query
+// Safer than using user controlled data in the query
+function get_fields($result, $fields) {
+  if (isset($fields) && $fields !== "*") {
+    $fields = preg_split("/,/", $fields);
+
+    $out = array();
+    while ($row = pg_fetch_array($result)) {
+      $parsed_row = array();
+      foreach ($fields as $field) {
+        if (isset($row[$field])) {
+          $parsed_row[$field] = $row[$field];
+        }
+      }
+      $out[] = $parsed_row;
+    }
+  } else {
+    $out = pg_fetch_all($result);
+  }
+  return $out;
+}
+
+function unauthorized() {
+  http_response_code(401);
+  header("WWW-Authenticate: Basic realm=\"MovieDB\"");
+  die("Unauthorized");
+}
+
+function is_authorized($uid) {
+  global $dbconn, $authorization;
+
+  if ($authorization == $uid) {
+    return true;
+  } else {
+    pg_prepare($dbconn, "checkAuth", "SELECT public FROM users WHERE id = $1");
+    $result = pg_execute($dbconn, "checkAuth", array($uid));
+    $result = pg_fetch_array($result);
+    // PostgreSQL Boolean is apparently 't' or 'f'
+    return isset($result["public"]) ? $result["public"] == 't' : false;
+  }
+}
+
+function require_args($vars, $len) {
+  if (sizeof($vars) < $len) {
+    http_response_code(400);
+    die("Invalid arguments");
+  }
+  return true;
+}
+
+// Set $authorization to user id if authenticated
+$authorization = null;
+if (isset($_SERVER["PHP_AUTH_USER"]) && isset($_SERVER["PHP_AUTH_PW"])) {
+  pg_prepare($dbconn, "authorization", "SELECT password, id FROM users WHERE email = $1")
+    or die("Failed to prepare query: " . pg_last_error());
+  $result = pg_execute($dbconn, "authorization", array($_SERVER["PHP_AUTH_USER"]));
+  $result = pg_fetch_array($result);
+
+  $pass = $result["password"];
+  $uid = $result["id"];
+  if (isset($uid)) {
+    if (isset($pass)) {
+      if (password_verify($_SERVER["PHP_AUTH_PW"], $pass)) {
+        $authorization = $uid;
+      } else {
+        http_response_code(401);
+        die("Wrong credentials");
+      }
+    } else {
+      $authorization = $uid;
+    }
+  }
+}
+
+switch ($api_vars[0]) {
+case "entries":
+  if (sizeof($api_vars) > 1) {
+    pg_prepare($dbconn, "entries", "SELECT * FROM entries WHERE id = $1")
+      or die("Failed to prepare query: " . pg_last_error());
+    $result = pg_execute($dbconn, "entries", array($api_vars[1]));
+
+    echo json_encode(get_fields($result, $query_vars["fields"])[0]);
+  } else {
+    pg_prepare($dbconn, "entries", "SELECT * FROM entries");
+    $result = pg_execute($dbconn, "entries", array());
+
+    echo json_encode(get_fields($result, $query_vars["fields"]));
+  }
+  break;
+
+case "list":
+  if (require_args($api_vars, 2)) {
+    if (!is_authorized($api_vars[1])) {
+      unauthorized();
+    } else {
+      if(isset($api_vars[2])) {
+        $sql = "SELECT * FROM full_list WHERE user_id = $1 AND entry_id = $2";
+        $vars = array($api_vars[1], $api_vars[2]);
+      } else {
+        $sql = "SELECT * FROM full_list WHERE user_id = $1";
+        $vars = array($api_vars[1]);
+      }
+      pg_prepare($dbconn, "list", $sql)
+        or die("Failed to prepare query: " . pg_last_error());
+      $result = pg_execute($dbconn, "list", $vars);
+
+      if(isset($api_vars[2])) {
+        $data = json_encode(get_fields($result, $query_vars["fields"])[0]);
+      } else {
+        $data = json_encode(get_fields($result, $query_vars["fields"]));
+      }
+      if($data == "null") http_response_code(404);
+      echo $data;
+    }
+  }
+  break;
+
+case "users":
+  $vars = array("id", "name", "email");
+
+  foreach ($vars as $var) {
+    if (isset($query_vars[$var])) {
+      pg_prepare($dbconn, "users", "SELECT name, id, email FROM users WHERE " . $var . " = $1")
+        or die("Failed to prepare query: " . pg_last_error());
+      $result = pg_execute($dbconn, "users", array($query_vars[$var]));
+      break;
+    }
+  }
+  if (!isset($result)) {
+    http_response_code(400);
+    die("Invalid query");
+  }
+
+  $out = get_fields($result, $query_vars["fields"])[0];
+  echo $out == '' ? "null" : json_encode($out);
+  break;
+
+case "check_auth":
+  if (isset($authorization)) {
+    echo $authorization;
+  } else {
+    unauthorized();
+  }
+  break;
+
+case "update_entry":
+  if(require_args($api_vars, 2)) {
+    if (!is_authorized($api_vars[1])) {
+      unauthorized();
+    } else {
+      $allowed_keys = array(
+        "rewatch" => "intval",
+        "score" => "intval",
+        "review" => "strval",
+        "watch_status" => "strval",
+        "episodes_watched" => "intval"
+      );
+
+      $keys = "";
+      $vals = array($authorization, $api_vars[2]);
+      $i = 3;
+      foreach ($_PATCH as $key => $val) {
+        if (in_array($key, array_keys($allowed_keys))) {
+          $keys .= "{$key} = \$" . strval($i++) . ", ";
+          array_push($vals, $allowed_keys[$key]($val));
+        }
+      }
+      $keys = rtrim($keys, ", ");
+
+      $sql = "UPDATE list_entries SET " . $keys . " WHERE user_id = $1 AND entry_id = $2";
+      pg_prepare($dbconn, "update_entry", $sql)
+        or die("Failed to prepare query: " . pg_last_error());
+      $result = pg_execute($dbconn, "update_entry", $vals);
+
+      pg_last_error();
+    }
+  }
+  break;
+
+case "stats":
+  if (require_args($api_vars, 3)) {
+    if (!is_authorized($api_vars[1])) {
+      unauthorized();
+    } else {
+      pg_prepare($dbconn, "stats", "SELECT * FROM statistics WHERE id = $1")
+        or die("Failed to prepare query: " . pg_last_error());
+      $result = pg_execute($dbconn, "stats", array($api_vars[2]));
+
+      echo json_encode(get_fields($result, $query_vars["fields"]));
+    }
+  }
+  break;
+
+case "dump":
+  print_r($_SERVER);
+  print_r($_POST);
+  print_r($_PATCH);
+  break;
+
+default:
+  http_response_code(400);
+  die("Invalid method: " . $api_vars[0]);
+}
+?>
