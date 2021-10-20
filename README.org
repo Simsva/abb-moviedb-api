@@ -1,0 +1,124 @@
+#+TITLE: MovieDB API
+#+AUTHOR: Simon Ericsson
+#+DESCRIPTION: Documentation for the MovieDB API
+
+An API for use by [[https://github.com/abbs0agaber/GenericMovieDB][our movie database website]].
+
+See [[./nginx_example.conf][nginx_example.conf]] for information on running the API.
+
+* Basic information
+** *API arguments*:
+Arguments provided in the API URL separated by slashes.
+
+/Example/: *.../get_data/arg1/arg2*, where "arg1" and "arg2" are API arguments.
+
+** *Query arguments*
+Arguments provided using the query string at the end of the URL.
+
+/Example/: *.../get_devices?fields=mac,name&id=3*, where "fields = mac,name" and "id = 3" are query arguments.
+
+* Usage
+*Base URL*: [[https://simsva.se/api/moviedb/]] (Or another URL pointed to the same PHP script provided in the repository)
+Methods are appended at the end of the *Base URL*, almost like the first "API argument".
+
+** Methods
+*** entries/ (GET)
+Gets data about movie entries.
+
+Returns a list of objects.
+
+**** *API arguments*:
+ 1. *Entry id*
+
+    Return data about a single entry as a _single object_.
+
+**** *Query arguments*:
+ - *fields*
+
+   Comma separated list of which fields to return.
+
+   /Example/: *.../entries?fields=name,description* only returns the name and description fields.
+
+*** list/ (GET)
+Gets data from a users list.
+
+Returns a list of objects.
+
+**** *API Arguments*:
+ 1. *id* (/required/)
+
+    User ID of the list to get.
+
+ 2. *entry id*
+
+    Return only the entry with the specified ID from the list as a _single object_.
+
+    Responds with 404 if not in list.
+
+**** *Query arguments*:
+ - *fields*
+
+   Same as for *entries/*
+
+*** users/ (GET)
+Returns info about a user.
+
+Returns an object.
+
+**** *Query arguments*:
+ - *id* (/one required/)
+
+   Returns info about the user with the specified id.
+
+ - *name* (/one required/)
+
+   Returns info about the user with the specified name.
+
+ - *email* (/one required/)
+
+   Returns info about the user with the specified e-mail.
+
+ - *fields*
+
+   Same as every other *fields*
+
+*** check_auth/ (GET)
+Returns the authenticated user id, or *401* if not authenticated.
+
+*** update_entry/ (PATCH)
+Updates an entry in a users list.
+
+**** API Arguments:
+ 1. *user id* (/required/)
+
+    User ID of the list to update.
+
+ 2. *entry id* (/required/)
+
+    Movie entry ID to update.
+
+**** PATCH Arguments:
+ - *rewatch*
+
+   Amount of rewatches to set the list entry to.
+
+ - *score*
+
+   Score to set the list entry to.
+
+ - *review*
+
+   Review to set the list entry to.
+
+ - *watch_status*
+
+   Watch status to set the list entry to.
+
+   Allowed values: /watching/, /completed/, /on_hold/, /dropped/, /plan_to_watch/
+
+ - *episodes_watched*
+
+   Amount of episodes watched to set the list entry to.
+
+*** stats/ (GET)
+Not implemented yet

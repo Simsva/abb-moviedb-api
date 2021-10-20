@@ -173,7 +173,7 @@ case "check_auth":
   break;
 
 case "update_entry":
-  if(require_args($api_vars, 2)) {
+  if(require_args($api_vars, 3)) {
     if (!is_authorized($api_vars[1])) {
       unauthorized();
     } else {
