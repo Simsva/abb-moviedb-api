@@ -1,23 +1,29 @@
 #+TITLE: MovieDB API
 #+AUTHOR: Simon Ericsson
+#+EMAIL: simon@krlsg.se
+
 #+DESCRIPTION: Documentation for the MovieDB API
+#+LANGUAGE: en
+
+#+OPTIONS: ^:nil
+#+OPTIONS: toc:3
 
 An API for use by [[https://github.com/abbs0agaber/GenericMovieDB][our movie database website]].
 
 See [[./nginx_example.conf][nginx_example.conf]] for information on running the API.
 
 * Basic information
-** *API arguments*:
+** API arguments
 Arguments provided in the API URL separated by slashes.
 
-/Example/: *.../get_data/arg1/arg2*, where "arg1" and "arg2" are API arguments.
+/Example/: ~.../get_data/arg1/arg2~, where ~arg1~ and ~arg2~ are API arguments.
 
-** *Query arguments*
+** Query arguments
 Arguments provided using the query string at the end of the URL.
 
-/Example/: *.../get_devices?fields=mac,name&id=3*, where "fields = mac,name" and "id = 3" are query arguments.
+/Example/: ~.../get_devices?fields=mac,name&id=3~, where ~fields = mac,name~ and ~id = 3~ are query arguments.
 
-* TODO [1/3] [33%]
+* TODO Planned [1/3] [33%]
  - [X] Sort entries etc. using the API.
  - [ ] Limit row count + offset.
  - [ ] Move get, update, add and delete list entry to one "method" using different HTTP methods.
@@ -42,13 +48,13 @@ Returns a list of objects.
 
    Comma separated list of which fields to return.
 
-   /Example/: *.../entries?fields=name,description* only returns the name and description fields.
+   /Example/: ~.../entries?fields=name,description~ only returns the name and description fields.
 
  - *order*
 
    Order by specified column/field.
 
-   /Example/: .../entries?order=average_score
+   /Example/: ~.../entries?order=average_score~
 
  - *order_direction*
 
@@ -56,7 +62,7 @@ Returns a list of objects.
 
    Accepted values: /asc/, /desc/ (default)
 
-   /Example/: .../entries?order=name&order_direction=asc
+   /Example/: ~.../entries?order=name&order_direction=asc~
 
 *** list/ (GET)
 Gets data from a users list.
@@ -72,7 +78,7 @@ Returns a list of objects.
 
     Return only the entry with the specified ID from the list as a _single object_.
 
-    Responds with 404 if not in list.
+    Responds with ~404~ if not in list.
 
 **** *Query arguments*:
  - *fields*
@@ -83,7 +89,7 @@ Returns a list of objects.
 
    Order by specified column/field.
 
-   /Example/: .../list/1?order=score
+   /Example/: ~.../list/1?order=score~
 
  - *order_direction*
 
@@ -91,7 +97,7 @@ Returns a list of objects.
 
    Accepted values: /asc/, /desc/ (default)
 
-   /Example/: .../list/1?order=name&order_direction=asc
+   /Example/: ~.../list/1?order=name&order_direction=asc~
 
 *** users/ (GET)
 Returns info about a user.
@@ -116,7 +122,7 @@ Returns an object.
    Comma separated list of which fields to return.
 
 *** check_auth/ (GET)
-Returns the authenticated user id, or *401* if not authenticated.
+Returns the authenticated user id, or ~401~ if not authenticated.
 
 *** update_entry/ (PATCH)
 Updates an entry in a users list.
@@ -156,8 +162,8 @@ Updates an entry in a users list.
 *** add_to_list/ (GET)
 Adds an entry to a user's list.
 
-Returns *404* if the specified *entry id* does not exist.
-Returns *409* if the specified *entry id* is already in the specified user's list.
+Returns ~404~ if the specified ~entry id~ does not exist.
+Returns ~409~ if the specified ~entry id~ is already in the specified user's list.
 
 **** API Arguments:
  1. *user id* (/required/)
@@ -171,7 +177,7 @@ Returns *409* if the specified *entry id* is already in the specified user's lis
 *** remove_from_list (GET)
 Remove an entry from a user's list.
 
-Returns *404* if the specified *entry id* does not exist in the list.
+Returns ~404~ if the specified ~entry id~ does not exist in the list.
 
 **** API Arguments:
  1. *user id* (/required/)
