@@ -55,7 +55,8 @@ function unauthorized() {
   die("Unauthorized");
 }
 
-function is_authorized($uid) {
+// if $strict, then the public field is ignored
+function is_authorized($uid, $strict = false) {
   global $dbconn, $authorization;
 
   if ($authorization == $uid) {
@@ -65,7 +66,10 @@ function is_authorized($uid) {
     $result = pg_execute($dbconn, "checkAuth", array($uid));
     $result = pg_fetch_array($result);
     // PostgreSQL Boolean is apparently 't' or 'f'
-    return isset($result["public"]) ? $result["public"] == 't' : false;
+    if($strict)
+      return false;
+    else
+      return isset($result["public"]) ? $result["public"] == 't' : false;
   }
 }
 
@@ -104,6 +108,11 @@ if (isset($_SERVER["PHP_AUTH_USER"]) && isset($_SERVER["PHP_AUTH_PW"])) {
 switch ($api_vars[0]) {
 case "entries":
   if (sizeof($api_vars) > 1) {
+    if(!is_numeric($api_vars[1])) {
+      http_response_code(400);
+      die("Invalid entry id");
+    }
+
     pg_prepare($dbconn, "entries", "SELECT * FROM entries WHERE id = $1")
       or die("Failed to prepare query: " . pg_last_error());
     $result = pg_execute($dbconn, "entries", array($api_vars[1]));
@@ -202,6 +211,36 @@ case "update_entry":
       $result = pg_execute($dbconn, "update_entry", $vals);
 
       pg_last_error();
+    }
+  }
+  break;
+
+case "add_to_list":
+  if(require_args($api_vars, 3)) {
+    if(!is_authorized($api_vars[1], true)) {
+      unauthorized();
+    } else {
+      pg_prepare($dbconn, "check_entry", "SELECT id FROM entries WHERE id = $1")
+        or die("Failed to prepare query: " . pg_last_error());
+      $result = pg_execute($dbconn, "check_entry", array($api_vars[2]));
+
+      if (pg_fetch_row($result) == null) {
+        http_response_code(404);
+        die("Entry with specified ID not found");
+      } else {
+        pg_prepare($dbconn, "check_in_list", "SELECT id FROM list_entries WHERE user_id = $1 AND entry_id = $2")
+          or die("Failed to prepare query: " . pg_last_error());
+        $result = pg_execute($dbconn, "check_in_list", array($api_vars[1], $api_vars[2]));
+
+        if(pg_fetch_row($result) != null) {
+          http_response_code(409);
+          die("Entry ID already in users list");
+        } else {
+          pg_prepare($dbconn, "add_to_list", "INSERT INTO list_entries (user_id, entry_id) VALUES ($1, $2)")
+            or die("Failed to prepare query: " . pg_last_error());
+          pg_execute($dbconn, "add_to_list", array($api_vars[1], $api_vars[2]));
+        }
+      }
     }
   }
   break;

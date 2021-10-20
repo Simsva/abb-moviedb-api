@@ -28,7 +28,7 @@ Gets data about movie entries.
 Returns a list of objects.
 
 **** *API arguments*:
- 1. *Entry id*
+ 1. *entry id*
 
     Return data about a single entry as a _single object_.
 
@@ -119,6 +119,22 @@ Updates an entry in a users list.
  - *episodes_watched*
 
    Amount of episodes watched to set the list entry to.
+
+*** add_to_list/ (GET)
+Adds an entry to a user's list.
+
+Returns *404* if the specified *entry id* does not exist.
+Returns *409* if the specified *entry id* is already in the specified user's list.
+
+**** API Arguments:
+ 1. *user id* (/required/)
+
+   The ID of the user whose list the entry should be added to.
+
+ 2. *entry id* (/required/)
+
+   The ID of the entry to add to the list.
+
 
 *** stats/ (GET)
 Not implemented yet
