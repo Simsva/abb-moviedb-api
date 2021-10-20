@@ -107,23 +107,42 @@ if (isset($_SERVER["PHP_AUTH_USER"]) && isset($_SERVER["PHP_AUTH_PW"])) {
 
 switch ($api_vars[0]) {
 case "entries":
+  $sql = "SELECT * FROM full_entries";
+  $vals = array();
+
+  // Specify entry id
   if (sizeof($api_vars) > 1) {
     if(!is_numeric($api_vars[1])) {
       http_response_code(400);
       die("Invalid entry ID");
     }
 
-    pg_prepare($dbconn, "entries", "SELECT * FROM entries INNER JOIN average_score ON entries.id = average_score.id WHERE entries.id = $1")
-      or die("Failed to prepare query: " . pg_last_error());
-    $result = pg_execute($dbconn, "entries", array($api_vars[1]));
-
-    echo json_encode(get_fields($result, $query_vars["fields"])[0]);
-  } else {
-    pg_prepare($dbconn, "entries", "SELECT * FROM entries INNER JOIN average_score ON entries.id = average_score.id");
-    $result = pg_execute($dbconn, "entries", array());
-
-    echo json_encode(get_fields($result, $query_vars["fields"]));
+    $sql .= " WHERE full_entries.id = $1";
+    $vals[] = $api_vars[1];
   }
+
+  // Order by
+  $accepted_orders = array("id", "name", "length", "description", "episodes", "category", "poster", "average_score");
+  $accepted_directions = array("asc", "desc");
+  if(isset($query_vars["order"]) and in_array($query_vars["order"], $accepted_orders)) {
+    $dir = (isset($query_vars["order_direction"]) and in_array($query_vars["order_direction"], $accepted_directions))
+         ? $query_vars["order_direction"] : "DESC";
+    $sql .= " ORDER BY {$query_vars["order"]} " . $dir;
+  }
+
+  // Query
+  pg_prepare($dbconn, "entries", $sql)
+    or die("Failed to prepare query: " . pg_last_error());
+  $result = pg_execute($dbconn, "entries", $vals);
+
+  $result = get_fields($result, $query_vars["fields"]);
+  if(sizeof($api_vars) > 1)
+    $data = json_encode($result[0]);
+  else
+    $data = json_encode($result);
+
+  if($data == "null") http_response_code(404);
+  echo $data;
   break;
 
 case "list":
@@ -131,22 +150,36 @@ case "list":
     if (!is_authorized($api_vars[1])) {
       unauthorized();
     } else {
+      $sql = "SELECT * FROM full_list WHERE user_id = $1";
+      $vars = array($api_vars[1]);
+
+      // Specify entry_id
       if(isset($api_vars[2])) {
-        $sql = "SELECT * FROM full_list WHERE user_id = $1 AND entry_id = $2";
-        $vars = array($api_vars[1], $api_vars[2]);
-      } else {
-        $sql = "SELECT * FROM full_list WHERE user_id = $1";
-        $vars = array($api_vars[1]);
+        $sql .= " AND entry_id = $2";
+        $vars[] = $api_vars[2];
       }
+
+      // Order by
+      $accepted_orders = array("user_id", "rewatch", "score", "review", "watch_status", "episodes_watched", "name",
+                               "length", "description", "episodes", "category", "poster", "entry_id");
+      $accepted_directions = array("asc", "desc");
+      if(isset($query_vars["order"]) and in_array($query_vars["order"], $accepted_orders)) {
+        $dir = (isset($query_vars["order_direction"]) and in_array($query_vars["order_direction"], $accepted_directions))
+              ? $query_vars["order_direction"] : "DESC";
+        $sql .= " ORDER BY {$query_vars["order"]} " . $dir;
+      }
+
+      // Request
       pg_prepare($dbconn, "list", $sql)
         or die("Failed to prepare query: " . pg_last_error());
       $result = pg_execute($dbconn, "list", $vars);
 
-      if(isset($api_vars[2])) {
+      // Return first element if entry_id is specified
+      if(isset($api_vars[2]))
         $data = json_encode(get_fields($result, $query_vars["fields"])[0]);
-      } else {
+      else
         $data = json_encode(get_fields($result, $query_vars["fields"]));
-      }
+
       if($data == "null") http_response_code(404);
       echo $data;
     }

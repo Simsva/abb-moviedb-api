@@ -17,7 +17,9 @@ Arguments provided using the query string at the end of the URL.
 
 /Example/: *.../get_devices?fields=mac,name&id=3*, where "fields = mac,name" and "id = 3" are query arguments.
 
-* TODO [0/1] [0%]
+* TODO [1/3] [33%]
+ - [X] Sort entries etc. using the API.
+ - [ ] Limit row count + offset.
  - [ ] Move get, update, add and delete list entry to one "method" using different HTTP methods.
 
 * API Usage
@@ -42,6 +44,20 @@ Returns a list of objects.
 
    /Example/: *.../entries?fields=name,description* only returns the name and description fields.
 
+ - *order*
+
+   Order by specified column/field.
+
+   /Example/: .../entries?order=average_score
+
+ - *order_direction*
+
+   Used in conjunction with *order*, specifies in which direction to order.
+
+   Accepted values: /asc/, /desc/ (default)
+
+   /Example/: .../entries?order=name&order_direction=asc
+
 *** list/ (GET)
 Gets data from a users list.
 
@@ -61,7 +77,21 @@ Returns a list of objects.
 **** *Query arguments*:
  - *fields*
 
-   Same as for *entries/*
+   Comma separated list of which fields to return.
+
+ - *order*
+
+   Order by specified column/field.
+
+   /Example/: .../list/1?order=score
+
+ - *order_direction*
+
+   Used in conjunction with *order*, specifies in which direction to order.
+
+   Accepted values: /asc/, /desc/ (default)
+
+   /Example/: .../list/1?order=name&order_direction=asc
 
 *** users/ (GET)
 Returns info about a user.
@@ -83,7 +113,7 @@ Returns an object.
 
  - *fields*
 
-   Same as every other *fields*
+   Comma separated list of which fields to return.
 
 *** check_auth/ (GET)
 Returns the authenticated user id, or *401* if not authenticated.
@@ -171,3 +201,8 @@ Returns an object.
  1. *user id* (/required/)
 
     The ID of the user whose statistics to get.
+
+**** *Query arguments*:
+ - *fields*
+
+   Comma separated list of which fields to return.
