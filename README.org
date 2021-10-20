@@ -129,12 +129,35 @@ Returns *409* if the specified *entry id* is already in the specified user's lis
 **** API Arguments:
  1. *user id* (/required/)
 
-   The ID of the user whose list the entry should be added to.
+    The ID of the user whose list the entry should be added to.
 
  2. *entry id* (/required/)
 
-   The ID of the entry to add to the list.
+    The ID of the entry to add to the list.
 
+*** remove_from_list (GET)
+Remove an entry from a user's list.
+
+Returns *404* if the specified *entry id* does not exist in the list.
+
+**** API Arguments:
+ 1. *user id* (/required/)
+
+    The ID of the user whose list the entry should be removed from.
+
+ 2. *entry id* (/required/)
+
+    The ID of the entry to remove from the list.
+
+*** get_reviews/ (GET)
+Get all reviews for an entry.
+
+Returns a list.
+
+**** API Arguments:
+ 1. *entry id* (/required/)
+
+    The ID of thje entry whose reviews to get.
 
 *** stats/ (GET)
 Not implemented yet

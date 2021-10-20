@@ -110,7 +110,7 @@ case "entries":
   if (sizeof($api_vars) > 1) {
     if(!is_numeric($api_vars[1])) {
       http_response_code(400);
-      die("Invalid entry id");
+      die("Invalid entry ID");
     }
 
     pg_prepare($dbconn, "entries", "SELECT * FROM entries WHERE id = $1")
@@ -241,6 +241,43 @@ case "add_to_list":
           pg_execute($dbconn, "add_to_list", array($api_vars[1], $api_vars[2]));
         }
       }
+    }
+  }
+  break;
+
+case "remove_from_list":
+  if(require_args($api_vars, 3)) {
+    if(!is_authorized($api_vars[1], true)) {
+      unauthorized();
+    } else {
+      pg_prepare($dbconn, "remove_from_list", "DELETE FROM list_entries WHERE user_id = $1 AND entry_id = $2")
+        or die("Failed to prepare query: " . pg_last_error());
+      $result = pg_execute($dbconn, "remove_from_list", array($api_vars[1], $api_vars[2]));
+
+      if(pg_affected_rows($result) == 0) {
+        http_response_code(404);
+        die("List entry not found");
+      }
+    }
+  }
+  break;
+
+case "get_reviews":
+  if(require_args($api_vars, 2)) {
+    if(!is_numeric($api_vars[1])) {
+      http_response_code(400);
+      die("Invalid entry ID");
+    } else {
+      pg_prepare($dbconn, "get_reviews", "SELECT review FROM list_entries WHERE entry_id = $1 AND review <> ''")
+        or die("Failed to prepare query: " . pg_last_error());
+      $result = pg_execute($dbconn, "get_reviews", array($api_vars[1]));
+      $result = pg_fetch_all($result);
+
+      $out = array();
+      foreach($result as $val) {
+        $out[] = $val["review"];
+      }
+      echo json_encode($out);
     }
   }
   break;
