@@ -17,7 +17,10 @@ Arguments provided using the query string at the end of the URL.
 
 /Example/: *.../get_devices?fields=mac,name&id=3*, where "fields = mac,name" and "id = 3" are query arguments.
 
-* Usage
+* TODO [0/1] [0%]
+ - [ ] Move get, update, add and delete list entry to one "method" using different HTTP methods.
+
+* API Usage
 *Base URL*: [[https://simsva.se/api/moviedb/]] (Or another URL pointed to the same PHP script provided in the repository)
 Methods are appended at the end of the *Base URL*, almost like the first "API argument".
 
@@ -160,4 +163,11 @@ Returns a list.
     The ID of thje entry whose reviews to get.
 
 *** stats/ (GET)
-Not implemented yet
+Get statistics for a user.
+
+Returns an object.
+
+**** API Arguments:
+ 1. *user id* (/required/)
+
+    The ID of the user whose statistics to get.

@@ -113,13 +113,13 @@ case "entries":
       die("Invalid entry ID");
     }
 
-    pg_prepare($dbconn, "entries", "SELECT * FROM entries WHERE id = $1")
+    pg_prepare($dbconn, "entries", "SELECT * FROM entries INNER JOIN average_score ON entries.id = average_score.id WHERE entries.id = $1")
       or die("Failed to prepare query: " . pg_last_error());
     $result = pg_execute($dbconn, "entries", array($api_vars[1]));
 
     echo json_encode(get_fields($result, $query_vars["fields"])[0]);
   } else {
-    pg_prepare($dbconn, "entries", "SELECT * FROM entries");
+    pg_prepare($dbconn, "entries", "SELECT * FROM entries INNER JOIN average_score ON entries.id = average_score.id");
     $result = pg_execute($dbconn, "entries", array());
 
     echo json_encode(get_fields($result, $query_vars["fields"]));
@@ -205,6 +205,11 @@ case "update_entry":
       }
       $keys = rtrim($keys, ", ");
 
+      if($keys == '') {
+        http_response_code(400);
+        die("Nothing specified in request body");
+      }
+
       $sql = "UPDATE list_entries SET " . $keys . " WHERE user_id = $1 AND entry_id = $2";
       pg_prepare($dbconn, "update_entry", $sql)
         or die("Failed to prepare query: " . pg_last_error());
@@ -283,13 +288,13 @@ case "get_reviews":
   break;
 
 case "stats":
-  if (require_args($api_vars, 3)) {
+  if (require_args($api_vars, 2)) {
     if (!is_authorized($api_vars[1])) {
       unauthorized();
     } else {
-      pg_prepare($dbconn, "stats", "SELECT * FROM statistics WHERE id = $1")
+      pg_prepare($dbconn, "stats", "SELECT * FROM statistics WHERE user_id = $1")
         or die("Failed to prepare query: " . pg_last_error());
-      $result = pg_execute($dbconn, "stats", array($api_vars[2]));
+      $result = pg_execute($dbconn, "stats", array($api_vars[1]));
 
       echo json_encode(get_fields($result, $query_vars["fields"]));
     }
