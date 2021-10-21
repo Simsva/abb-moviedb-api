@@ -65,10 +65,10 @@ function is_authorized($uid, $strict = false) {
     pg_prepare($dbconn, "checkAuth", "SELECT public FROM users WHERE id = $1");
     $result = pg_execute($dbconn, "checkAuth", array($uid));
     $result = pg_fetch_array($result);
-    // PostgreSQL Boolean is apparently 't' or 'f'
     if($strict)
       return false;
     else
+      // PostgreSQL Boolean is apparently 't' or 'f'
       return isset($result["public"]) ? $result["public"] == 't' : false;
   }
 }
@@ -148,7 +148,7 @@ case "entries":
     or die("Failed to prepare query: " . pg_last_error());
   $result = pg_execute($dbconn, "entries", $vars);
 
-  $result = get_fields($result, $query_vars["fields"]);
+  $result = get_fields($result, $query_vars["fields"]??null);
   if(sizeof($api_vars) > 1)
     $data = json_encode($result[0]);
   else
@@ -204,9 +204,9 @@ case "list":
 
         // Return first element if entry_id is specified
         if(isset($api_vars[2]))
-          $data = json_encode(get_fields($result, $query_vars["fields"])[0]);
+          $data = json_encode(get_fields($result, $query_vars["fields"]??null)[0]);
         else
-          $data = json_encode(get_fields($result, $query_vars["fields"]));
+          $data = json_encode(get_fields($result, $query_vars["fields"]??null));
 
         if($data == "null") http_response_code(404);
         echo $data;
@@ -330,7 +330,7 @@ case "users":
     die("Invalid query");
   }
 
-  $out = get_fields($result, $query_vars["fields"])[0];
+  $out = get_fields($result, $query_vars["fields"]??null)[0];
   echo $out == '' ? "null" : json_encode($out);
   break;
 
@@ -379,7 +379,7 @@ case "stats":
         or die("Failed to prepare query: " . pg_last_error());
       $result = pg_execute($dbconn, "stats", array($api_vars[1]));
 
-      echo json_encode(get_fields($result, $query_vars["fields"]));
+      echo json_encode(get_fields($result, $query_vars["fields"]??null));
     }
   }
   break;
