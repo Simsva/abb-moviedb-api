@@ -23,10 +23,11 @@ Arguments provided using the query string at the end of the URL.
 
 /Example/: ~.../entries?fields=name,description&order=score~, where ~fields = name,description~ and ~order = score~ are query arguments.
 
-* TODO Planned [3/3] [100%]
+* TODO Planned [3/4] [75%]
  - [X] Sort entries etc. using the API.
  - [X] Limit row count + offset.
  - [X] Move get, update, add and delete list entry to one API path using different HTTP methods.
+ - [ ] Advanced Search
 
 * API Usage
 *Base URL*: [[https://simsva.se/api/moviedb/]] (Or another URL pointed to the same PHP script provided in the repository)
@@ -71,6 +72,10 @@ Returns a list of objects.
  - *offset*
 
    Start at entry number ~offset~, useful when user with ~limit~.
+
+ - *search*
+
+   String to search for in the name or description. Case insensitive.
 
 *** list/ (GET)
 Gets data from a users list.

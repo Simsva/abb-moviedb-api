@@ -111,8 +111,10 @@ case "entries":
   $vars = array();
   $i = 1;
 
-  // Specify entry id
+  $search_columns = array("name", "description");
+
   if (sizeof($api_vars) > 1) {
+    // Specify entry id
     if(!is_numeric($api_vars[1])) {
       http_response_code(400);
       die("Invalid entry ID");
@@ -120,6 +122,12 @@ case "entries":
 
     $sql .= " WHERE full_entries.id = $" . $i++;
     $vars[] = $api_vars[1];
+  } else if(isset($query_vars["search"])) {
+    // Search for string in $search_columns
+    $sql .= " WHERE";
+    foreach($search_columns as $column)
+      $sql .= " LOWER({$column}) LIKE LOWER('%{$query_vars["search"]}%') OR";
+    $sql = rtrim($sql, " OR");
   }
 
   // Order by
