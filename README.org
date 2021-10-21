@@ -8,7 +8,7 @@
 #+OPTIONS: ^:nil
 #+OPTIONS: toc:3
 
-An API for use by [[https://github.com/abbs0agaber/GenericMovieDB][our movie database website]].
+An API for use by [[https://github.com/abbs0agaber/GenericMovieDB][our movie database website]]. Source code available at [[https://github.com/Simsva/abb-moviedb-api/][GitHub]].
 
 See [[./nginx_example.conf][nginx_example.conf]] for information on running the API.
 
