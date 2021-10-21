@@ -216,7 +216,7 @@ case "check_auth":
 
 case "update_entry":
   if(require_args($api_vars, 3)) {
-    if (!is_authorized($api_vars[1])) {
+    if (!is_authorized($api_vars[1], true)) {
       unauthorized();
     } else {
       $allowed_keys = array(
