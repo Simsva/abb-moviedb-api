@@ -8,9 +8,9 @@
 #+OPTIONS: ^:nil
 #+OPTIONS: toc:3
 
-An API for use by [[https://github.com/abbs0agaber/GenericMovieDB][our movie database website]]. Source code available at [[https://github.com/Simsva/abb-moviedb-api/][GitHub]].
+An API for use by [[github:abbs0agaber/GenericMovieDB][our movie database website]]. Source code available at [[github:Simsva/abb-moviedb-api][GitHub]].
 
-See [[./nginx_example.conf][nginx_example.conf]] for information on running the API.
+See [[github:Simsva/abb-moviedb-api/blob/master/nginx_example.conf][nginx_example.conf]] for information on running the API.
 
 * Basic information
 ** Path arguments
@@ -159,7 +159,7 @@ Returns ~409~ if the specified ~entry id~ is already in the specified user's lis
     The ID of the user whose list the entry should be added to.
 
 **** POST arguments:
- - *entry id* (/required/)
+ - *id* (/required/)
 
    The ID of the entry to add to the list.
 
