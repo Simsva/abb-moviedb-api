@@ -108,7 +108,8 @@ if (isset($_SERVER["PHP_AUTH_USER"]) && isset($_SERVER["PHP_AUTH_PW"])) {
 switch ($api_vars[0]) {
 case "entries":
   $sql = "SELECT * FROM full_entries";
-  $vals = array();
+  $vars = array();
+  $i = 1;
 
   // Specify entry id
   if (sizeof($api_vars) > 1) {
@@ -117,8 +118,8 @@ case "entries":
       die("Invalid entry ID");
     }
 
-    $sql .= " WHERE full_entries.id = $1";
-    $vals[] = $api_vars[1];
+    $sql .= " WHERE full_entries.id = $" . $i++;
+    $vars[] = $api_vars[1];
   }
 
   // Order by
@@ -130,10 +131,22 @@ case "entries":
     $sql .= " ORDER BY {$query_vars["order"]} " . $dir;
   }
 
+  // Limit
+  if(isset($query_vars["limit"]) and is_numeric($query_vars["limit"])) {
+    $sql .= " LIMIT $" . $i++;
+    $vars[] = $query_vars["limit"];
+  }
+
+  // Offset
+  if(isset($query_vars["offset"]) and is_numeric($query_vars["offset"])) {
+    $sql .= " OFFSET $" . $i++;
+    $vars[] = $query_vars["offset"];
+  }
+
   // Query
   pg_prepare($dbconn, "entries", $sql)
     or die("Failed to prepare query: " . pg_last_error());
-  $result = pg_execute($dbconn, "entries", $vals);
+  $result = pg_execute($dbconn, "entries", $vars);
 
   $result = get_fields($result, $query_vars["fields"]);
   if(sizeof($api_vars) > 1)
@@ -152,10 +165,11 @@ case "list":
     } else {
       $sql = "SELECT * FROM full_list WHERE user_id = $1";
       $vars = array($api_vars[1]);
+      $i = 2;
 
       // Specify entry_id
       if(isset($api_vars[2])) {
-        $sql .= " AND entry_id = $2";
+        $sql .= " AND entry_id = $" . $i++;
         $vars[] = $api_vars[2];
       }
 
@@ -167,6 +181,18 @@ case "list":
         $dir = (isset($query_vars["order_direction"]) and in_array($query_vars["order_direction"], $accepted_directions))
               ? $query_vars["order_direction"] : "DESC";
         $sql .= " ORDER BY {$query_vars["order"]} " . $dir;
+      }
+
+      // Limit
+      if(isset($query_vars["limit"]) and is_numeric($query_vars["limit"])) {
+        $sql .= " LIMIT $" . $i++;
+        $vars[] = $query_vars["limit"];
+      }
+
+      // Offset
+      if(isset($query_vars["offset"]) and is_numeric($query_vars["offset"])) {
+        $sql .= " OFFSET $" . $i++;
+        $vars[] = $query_vars["offset"];
       }
 
       // Request
