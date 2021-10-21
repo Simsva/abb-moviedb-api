@@ -4,7 +4,7 @@
 // CORS
 header("Access-Control-Allow-Origin: simsva.se");
 header("Access-Control-Allow-Headers: Authorization, Origin, Content-Type, X-Auth-Token");
-header("Access-Control-Allow-Methods: GET, POST, PATCH, PUT");
+header("Access-Control-Allow-Methods: GET, POST, PATCH, DELETE");
 header("Access-Control-Allow-Credentials: true");
 
 // Get HTTP Basic credentials
@@ -159,56 +159,158 @@ case "entries":
   break;
 
 case "list":
-  if (require_args($api_vars, 2)) {
-    if (!is_authorized($api_vars[1])) {
-      unauthorized();
-    } else {
-      $sql = "SELECT * FROM full_list WHERE user_id = $1";
-      $vars = array($api_vars[1]);
-      $i = 2;
+  switch($_SERVER["REQUEST_METHOD"]) {
+  case "GET":
+    if (require_args($api_vars, 2)) {
+      if (!is_authorized($api_vars[1])) {
+        unauthorized();
+      } else {
+        $sql = "SELECT * FROM full_list WHERE user_id = $1";
+        $vars = array($api_vars[1]);
+        $i = 2;
 
-      // Specify entry_id
-      if(isset($api_vars[2])) {
-        $sql .= " AND entry_id = $" . $i++;
-        $vars[] = $api_vars[2];
+        // Specify entry_id
+        if(isset($api_vars[2])) {
+          $sql .= " AND entry_id = $" . $i++;
+          $vars[] = $api_vars[2];
+        }
+
+        // Order by
+        $accepted_orders = array("user_id", "rewatch", "score", "review", "watch_status", "episodes_watched", "name",
+                                "length", "description", "episodes", "category", "poster", "entry_id");
+        $accepted_directions = array("asc", "desc");
+        if(isset($query_vars["order"]) and in_array($query_vars["order"], $accepted_orders)) {
+          $dir = (isset($query_vars["order_direction"]) and in_array($query_vars["order_direction"], $accepted_directions))
+                ? $query_vars["order_direction"] : "DESC";
+          $sql .= " ORDER BY {$query_vars["order"]} " . $dir;
+        }
+
+        // Limit
+        if(isset($query_vars["limit"]) and is_numeric($query_vars["limit"])) {
+          $sql .= " LIMIT $" . $i++;
+          $vars[] = $query_vars["limit"];
+        }
+
+        // Offset
+        if(isset($query_vars["offset"]) and is_numeric($query_vars["offset"])) {
+          $sql .= " OFFSET $" . $i++;
+          $vars[] = $query_vars["offset"];
+        }
+
+        // Request
+        pg_prepare($dbconn, "list", $sql)
+          or die("Failed to prepare query: " . pg_last_error());
+        $result = pg_execute($dbconn, "list", $vars);
+
+        // Return first element if entry_id is specified
+        if(isset($api_vars[2]))
+          $data = json_encode(get_fields($result, $query_vars["fields"])[0]);
+        else
+          $data = json_encode(get_fields($result, $query_vars["fields"]));
+
+        if($data == "null") http_response_code(404);
+        echo $data;
       }
-
-      // Order by
-      $accepted_orders = array("user_id", "rewatch", "score", "review", "watch_status", "episodes_watched", "name",
-                               "length", "description", "episodes", "category", "poster", "entry_id");
-      $accepted_directions = array("asc", "desc");
-      if(isset($query_vars["order"]) and in_array($query_vars["order"], $accepted_orders)) {
-        $dir = (isset($query_vars["order_direction"]) and in_array($query_vars["order_direction"], $accepted_directions))
-              ? $query_vars["order_direction"] : "DESC";
-        $sql .= " ORDER BY {$query_vars["order"]} " . $dir;
-      }
-
-      // Limit
-      if(isset($query_vars["limit"]) and is_numeric($query_vars["limit"])) {
-        $sql .= " LIMIT $" . $i++;
-        $vars[] = $query_vars["limit"];
-      }
-
-      // Offset
-      if(isset($query_vars["offset"]) and is_numeric($query_vars["offset"])) {
-        $sql .= " OFFSET $" . $i++;
-        $vars[] = $query_vars["offset"];
-      }
-
-      // Request
-      pg_prepare($dbconn, "list", $sql)
-        or die("Failed to prepare query: " . pg_last_error());
-      $result = pg_execute($dbconn, "list", $vars);
-
-      // Return first element if entry_id is specified
-      if(isset($api_vars[2]))
-        $data = json_encode(get_fields($result, $query_vars["fields"])[0]);
-      else
-        $data = json_encode(get_fields($result, $query_vars["fields"]));
-
-      if($data == "null") http_response_code(404);
-      echo $data;
     }
+    break;
+
+  case "POST":
+    if(require_args($api_vars, 2)) {
+      if(!is_authorized($api_vars[1], true)) {
+        unauthorized();
+      } else {
+        if(!isset($_POST["id"]) or !is_numeric($_POST["id"])) {
+          http_response_code(400);
+          die("Invalid entry ID");
+        }
+
+        // Check if entry exists
+        pg_prepare($dbconn, "check_entry", "SELECT id FROM entries WHERE id = $1")
+          or die("Failed to prepare query: " . pg_last_error());
+        $result = pg_execute($dbconn, "check_entry", array($_POST["id"]));
+
+        if (pg_fetch_row($result) == null) {
+          http_response_code(404);
+          die("Entry with specified ID not found");
+        } else {
+          // Check if entry is already in the list
+          pg_prepare($dbconn, "check_in_list", "SELECT id FROM list_entries WHERE user_id = $1 AND entry_id = $2")
+            or die("Failed to prepare query: " . pg_last_error());
+          $result = pg_execute($dbconn, "check_in_list", array($api_vars[1], $_POST["id"]));
+
+          if(pg_fetch_row($result) != null) {
+            http_response_code(409);
+            die("Entry ID already in users list");
+          } else {
+            // Add to list
+            pg_prepare($dbconn, "add_to_list", "INSERT INTO list_entries (user_id, entry_id) VALUES ($1, $2)")
+              or die("Failed to prepare query: " . pg_last_error());
+            pg_execute($dbconn, "add_to_list", array($api_vars[1], $_POST["id"]));
+          }
+        }
+      }
+    }
+    break;
+
+  case "PATCH":
+    if(require_args($api_vars, 3)) {
+      if (!is_authorized($api_vars[1], true)) {
+        unauthorized();
+      } else {
+        $allowed_keys = array(
+          "rewatch" => "intval",
+          "score" => "intval",
+          "review" => "strval",
+          "watch_status" => "strval",
+          "episodes_watched" => "intval"
+        );
+
+        $keys = "";
+        $vals = array($authorization, $api_vars[2]);
+        $i = 3;
+        foreach ($_PATCH as $key => $val) {
+          if (in_array($key, array_keys($allowed_keys))) {
+            $keys .= "{$key} = \$" . strval($i++) . ", ";
+            array_push($vals, $allowed_keys[$key]($val));
+          }
+        }
+        $keys = rtrim($keys, ", ");
+
+        if($keys == '') {
+          http_response_code(400);
+          die("Nothing specified in request body");
+        }
+
+        $sql = "UPDATE list_entries SET " . $keys . " WHERE user_id = $1 AND entry_id = $2";
+        pg_prepare($dbconn, "update_entry", $sql)
+          or die("Failed to prepare query: " . pg_last_error());
+        $result = pg_execute($dbconn, "update_entry", $vals);
+
+        pg_last_error();
+      }
+    }
+    break;
+
+  case "DELETE":
+    if(require_args($api_vars, 3)) {
+      if(!is_authorized($api_vars[1], true)) {
+        unauthorized();
+      } else {
+        pg_prepare($dbconn, "remove_from_list", "DELETE FROM list_entries WHERE user_id = $1 AND entry_id = $2")
+          or die("Failed to prepare query: " . pg_last_error());
+        $result = pg_execute($dbconn, "remove_from_list", array($api_vars[1], $api_vars[2]));
+
+        if(pg_affected_rows($result) == 0) {
+          http_response_code(404);
+          die("List entry not found");
+        }
+      }
+    }
+    break;
+
+  default:
+    http_response_code(400);
+    die("Invalid request method: " . $_SERVER["REQUEST_METHOD"]);
   }
   break;
 
@@ -241,89 +343,11 @@ case "check_auth":
   break;
 
 case "update_entry":
-  if(require_args($api_vars, 3)) {
-    if (!is_authorized($api_vars[1], true)) {
-      unauthorized();
-    } else {
-      $allowed_keys = array(
-        "rewatch" => "intval",
-        "score" => "intval",
-        "review" => "strval",
-        "watch_status" => "strval",
-        "episodes_watched" => "intval"
-      );
-
-      $keys = "";
-      $vals = array($authorization, $api_vars[2]);
-      $i = 3;
-      foreach ($_PATCH as $key => $val) {
-        if (in_array($key, array_keys($allowed_keys))) {
-          $keys .= "{$key} = \$" . strval($i++) . ", ";
-          array_push($vals, $allowed_keys[$key]($val));
-        }
-      }
-      $keys = rtrim($keys, ", ");
-
-      if($keys == '') {
-        http_response_code(400);
-        die("Nothing specified in request body");
-      }
-
-      $sql = "UPDATE list_entries SET " . $keys . " WHERE user_id = $1 AND entry_id = $2";
-      pg_prepare($dbconn, "update_entry", $sql)
-        or die("Failed to prepare query: " . pg_last_error());
-      $result = pg_execute($dbconn, "update_entry", $vals);
-
-      pg_last_error();
-    }
-  }
-  break;
-
 case "add_to_list":
-  if(require_args($api_vars, 3)) {
-    if(!is_authorized($api_vars[1], true)) {
-      unauthorized();
-    } else {
-      pg_prepare($dbconn, "check_entry", "SELECT id FROM entries WHERE id = $1")
-        or die("Failed to prepare query: " . pg_last_error());
-      $result = pg_execute($dbconn, "check_entry", array($api_vars[2]));
-
-      if (pg_fetch_row($result) == null) {
-        http_response_code(404);
-        die("Entry with specified ID not found");
-      } else {
-        pg_prepare($dbconn, "check_in_list", "SELECT id FROM list_entries WHERE user_id = $1 AND entry_id = $2")
-          or die("Failed to prepare query: " . pg_last_error());
-        $result = pg_execute($dbconn, "check_in_list", array($api_vars[1], $api_vars[2]));
-
-        if(pg_fetch_row($result) != null) {
-          http_response_code(409);
-          die("Entry ID already in users list");
-        } else {
-          pg_prepare($dbconn, "add_to_list", "INSERT INTO list_entries (user_id, entry_id) VALUES ($1, $2)")
-            or die("Failed to prepare query: " . pg_last_error());
-          pg_execute($dbconn, "add_to_list", array($api_vars[1], $api_vars[2]));
-        }
-      }
-    }
-  }
-  break;
-
 case "remove_from_list":
-  if(require_args($api_vars, 3)) {
-    if(!is_authorized($api_vars[1], true)) {
-      unauthorized();
-    } else {
-      pg_prepare($dbconn, "remove_from_list", "DELETE FROM list_entries WHERE user_id = $1 AND entry_id = $2")
-        or die("Failed to prepare query: " . pg_last_error());
-      $result = pg_execute($dbconn, "remove_from_list", array($api_vars[1], $api_vars[2]));
-
-      if(pg_affected_rows($result) == 0) {
-        http_response_code(404);
-        die("List entry not found");
-      }
-    }
-  }
+  http_response_code(301);
+  header("Location: {$_SERVER["REQUEST_SCHEME"]}://{$_SERVER["HTTP_HOST"]}{$_SERVER["SCRIPT_NAME"]}/list/");
+  die("301 Moved permanently, see documentation for list/ for information");
   break;
 
 case "get_reviews":

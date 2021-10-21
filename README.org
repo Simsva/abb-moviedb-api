@@ -26,7 +26,7 @@ Arguments provided using the query string at the end of the URL.
 * TODO Planned [2/3] [66%]
  - [X] Sort entries etc. using the API.
  - [X] Limit row count + offset.
- - [ ] Move get, update, add and delete list entry to one "method" using different HTTP methods.
+ - [-] Move get, update, add and delete list entry to one "method" using different HTTP methods.
 
 * API Usage
 *Base URL*: [[https://simsva.se/api/moviedb/]] (Or another URL pointed to the same PHP script provided in the repository)
@@ -107,32 +107,7 @@ Returns a list of objects.
 
    /Example/: ~.../list/1?order=name&order_direction=asc~
 
-*** users/ (GET)
-Returns info about a user.
-
-Returns an object.
-
-**** *Query arguments*:
- - *id* (/one required/)
-
-   Returns info about the user with the specified id.
-
- - *name* (/one required/)
-
-   Returns info about the user with the specified name.
-
- - *email* (/one required/)
-
-   Returns info about the user with the specified e-mail.
-
- - *fields*
-
-   Comma separated list of which fields to return.
-
-*** check_auth/ (GET)
-Returns the authenticated user id, or ~401~ if not authenticated.
-
-*** update_entry/ (PATCH)
+*** list/ (PATCH)
 Updates an entry in a users list.
 
 **** API Arguments:
@@ -167,7 +142,7 @@ Updates an entry in a users list.
 
    Amount of episodes watched to set the list entry to.
 
-*** add_to_list/ (GET)
+*** list/ (POST)
 Adds an entry to a user's list.
 
 Returns ~404~ if the specified ~entry id~ does not exist.
@@ -178,11 +153,12 @@ Returns ~409~ if the specified ~entry id~ is already in the specified user's lis
 
     The ID of the user whose list the entry should be added to.
 
- 2. *entry id* (/required/)
+**** POST Arguments:
+ - *entry id* (/required/)
 
-    The ID of the entry to add to the list.
+   The ID of the entry to add to the list.
 
-*** remove_from_list (GET)
+*** list/ (DELETE)
 Remove an entry from a user's list.
 
 Returns ~404~ if the specified ~entry id~ does not exist in the list.
@@ -195,6 +171,31 @@ Returns ~404~ if the specified ~entry id~ does not exist in the list.
  2. *entry id* (/required/)
 
     The ID of the entry to remove from the list.
+
+*** users/ (GET)
+Returns info about a user.
+
+Returns an object.
+
+**** *Query arguments*:
+ - *id* (/one required/)
+
+   Returns info about the user with the specified id.
+
+ - *name* (/one required/)
+
+   Returns info about the user with the specified name.
+
+ - *email* (/one required/)
+
+   Returns info about the user with the specified e-mail.
+
+ - *fields*
+
+   Comma separated list of which fields to return.
+
+*** check_auth/ (GET)
+Returns the authenticated user id, or ~401~ if not authenticated.
 
 *** get_reviews/ (GET)
 Get all reviews for an entry.
