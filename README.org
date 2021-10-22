@@ -8,9 +8,9 @@
 #+OPTIONS: ^:nil
 #+OPTIONS: toc:3
 
-An API for use by [[github:abbs0agaber/GenericMovieDB][our movie database website]]. Source code available at [[github:Simsva/abb-moviedb-api][GitHub]].
+An API for use by [[https://github.com/abbs0agaber/GenericMovieDB][our movie database website]]. Source code available at [[https://github.com/Simsva/abb-moviedb-api][GitHub]].
 
-See [[github:Simsva/abb-moviedb-api/blob/master/nginx_example.conf][nginx_example.conf]] for information on running the API.
+See [[https://github.com/Simsva/abb-moviedb-api/blob/master/nginx_example.conf][nginx_example.conf]] for information on running the API.
 
 * Basic information
 ** Path arguments
@@ -202,15 +202,20 @@ Returns an object.
 *** check_auth/ (GET)
 Returns the authenticated user id, or ~401~ if not authenticated.
 
-*** get_reviews/ (GET)
+*** reviews/ (GET)
 Get all reviews for an entry.
 
-Returns a list.
+Returns a list of objects with fields: /user_id/, /username/, /review/.
 
 **** Path arguments:
  1. *entry id* (/required/)
 
     The ID of thje entry whose reviews to get.
+
+**** Query arguments:
+ - *fields*
+
+   Comma separated list of which fields to return.
 
 *** stats/ (GET)
 Get statistics for a user.

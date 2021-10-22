@@ -358,7 +358,7 @@ case "remove_from_list":
   http_response_code(301);
   header("Deprecation: date=\"2021-10-21\"");
   header("Link: <{$api_url}/list/>; rel=\"alternate\"");
-  die("410 Gone\nSee the <a href=\"{$api_url}_docs.html\">documentation for list/</a> for information");
+  die("<h1>410 Gone</h1>See the <a href=\"{$api_url}_docs.html\">documentation for list/</a> for information");
   break;
 
 case "get_reviews":
@@ -370,16 +370,11 @@ case "reviews":
       http_response_code(400);
       die("Invalid entry ID");
     } else {
-      pg_prepare($dbconn, "get_reviews", "SELECT review FROM list_entries WHERE entry_id = $1 AND review <> ''")
+      pg_prepare($dbconn, "get_reviews", "SELECT user_id, name AS username, review FROM list_entries INNER JOIN users ON list_entries.user_id = users.id WHERE entry_id = $1 AND review <> ''")
         or die("Failed to prepare query: " . pg_last_error());
       $result = pg_execute($dbconn, "get_reviews", array($api_vars[1]));
-      $result = pg_fetch_all($result);
 
-      $out = array();
-      foreach($result as $val) {
-        $out[] = $val["review"];
-      }
-      echo json_encode($out);
+      echo json_encode(get_fields($result, $query_vars["fields"]??null));
     }
   }
   break;
